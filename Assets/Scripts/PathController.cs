@@ -161,24 +161,23 @@ public class PathController : MonoBehaviour
         else
         {
 
-
             currentWaypoint = closest;
             prevWaypoint = mapWaypoints[currentWaypoint.prev[0]];
             nextWaypoint = mapWaypoints[currentWaypoint.neighbors[0]];
-
+            
             direction = nextWaypoint.position - prevWaypoint.position;
-
-            if (pathDistance > 5)
+           
+            if (pathDistance > 7)
             {
                 OnOutOfRoad.Invoke();
 
             }
-            if (Vector3.Angle(currentDir, direction) < 2 && pathDistance < 5)
+            if (Vector3.Angle(currentDir, direction) < 5 && pathDistance < 7)
             {
                 OnLaneChange.Invoke();
 
             }
-            else if (Vector3.Angle(currentDir, direction) > 175 && pathDistance < 5)
+            else if (Vector3.Angle(currentDir, direction) > 75 && pathDistance < 7)
             {
                 OnInverseLaneChange.Invoke();
 
@@ -213,9 +212,10 @@ public class PathController : MonoBehaviour
         Vector3 prevPos = prevWaypoint?.position ?? centerOfMass.position;
         Vector3 currentPos = currentWaypoint?.position ?? centerOfMass.position;
         Vector3 nextPos = nextWaypoint?.position ?? centerOfMass.position;
-
-        currentPath.positionCount = 3;
-        currentPath.SetPositions(new Vector3[] { prevPos + Vector3.up / 2, currentPos + Vector3.up / 2, nextPos + Vector3.up / 2 });
+        Vector3 postNextPos = mapWaypoints[nextWaypoint.neighbors[0]]?.position ?? centerOfMass.position;
+        
+        currentPath.positionCount = 4;
+        currentPath.SetPositions(new Vector3[] { prevPos + Vector3.up / 2, currentPos + Vector3.up / 2, nextPos + Vector3.up / 2 , postNextPos  + Vector3.up / 2});
 
 
         foreach (Transform t in alternativeParent)
@@ -225,13 +225,16 @@ public class PathController : MonoBehaviour
 
         if (currentWaypoint != null && prevWaypoint != null && nextWaypoint != null)
         {
-            for (int i = 1; i < currentWaypoint.neighbors.Count; i++)
+            for (int i = 0; i < currentWaypoint.neighbors.Count; i++)
             {
+                if (mapWaypoints[currentWaypoint.neighbors[i]] == nextWaypoint)
+                    continue;
                 List<Vector3> path = new();
                 GameObject altPath = Instantiate(alternativePath, alternativeParent);
                 path.Add(prevPos + Vector3.up / 2);
                 path.Add(currentPos + Vector3.up / 2);
                 path.Add(mapWaypoints[currentWaypoint.neighbors[i]].position + Vector3.up / 2);
+                path.Add(mapWaypoints[mapWaypoints[currentWaypoint.neighbors[i]].neighbors[0]].position + Vector3.up / 2);
                 altPath.GetComponent<LineRenderer>().positionCount = path.Count;
                 altPath.GetComponent<LineRenderer>().SetPositions(path.ToArray());
             }

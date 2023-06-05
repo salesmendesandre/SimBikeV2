@@ -1,12 +1,17 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Timers;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
 public class AlertManager : MonoBehaviour
 {
+    [SerializeField] private ErrorNotifcation errorNotification;
+    [SerializeField] private WarningNotification warningNotification;
+
+    private Stopwatch errorWatch = new();
     private Timer errorAlert = new(5000);
     private Timer warningAlert = new(5000);
 
@@ -22,15 +27,23 @@ public class AlertManager : MonoBehaviour
     public bool NoMovement { get => noMovement; set => noMovement = value; }
 
     private bool reload = false;
+    private bool hide = false;
     private void Start()
     {
         errorAlert.AutoReset = false;
         errorAlert.Elapsed += (sender, args) => reload = true;
 
         warningAlert.AutoReset = false;
-        warningAlert.Elapsed += (sender, args) => Debug.Log("Warning ended");
+        warningAlert.Elapsed += WarningEnded;
     }
 
+    private void WarningEnded(object sender, ElapsedEventArgs e)
+    {
+        UnityEngine.Debug.Log("Warning has ended");
+        hide = true;
+
+
+    }
 
     private void Update()
     {
@@ -38,6 +51,15 @@ public class AlertManager : MonoBehaviour
         {
             SceneManager.LoadScene(SceneManager.GetActiveScene().name);
         }
+
+        if (hide)
+        {
+            hide = false;
+            warningNotification.gameObject.SetActive(false);
+        }
+
+        if (errorAlert.Enabled)
+            errorNotification.SetTimer((errorAlert.Interval - errorWatch.ElapsedMilliseconds) / 1000);
     }
 
     private void OnDisable()
@@ -58,18 +80,21 @@ public class AlertManager : MonoBehaviour
     }
     public void AlertInverseLaneChange()
     {
-        if (!InverseLaneChanged) {
+        if (!InverseLaneChanged)
+        {
 
             StartErrorTimer(ref inverseLaneChanged, "Está circulando en sentido contrario. Vuelva a su carril.");
         }
         else
         {
-            StopErrorTimer(ref inverseLaneChanged, "Sentido OK");
+            if (AnyAlertPending())
+                StopErrorTimer(ref inverseLaneChanged, "Sentido OK");
         }
     }
     public void AlertOutOfRoad()
     {
-        if (!OutOfRoad) { 
+        if (!OutOfRoad)
+        {
 
             StartErrorTimer(ref outOfRoad, "Está circulando fuera de la carretera. Vuelva a la calzada.");
         }
@@ -102,40 +127,53 @@ public class AlertManager : MonoBehaviour
     }
     private bool AnyAlertPending()
     {
-        return OutOfRoad || InverseLaneChanged;
+        return OutOfRoad || InverseLaneChanged || SemaphoreFail;
     }
 
     private void StartErrorTimer(ref bool alert, string message)
     {
-        if(!AnyAlertPending())
+        errorNotification.gameObject.SetActive(true);
+        errorNotification.SetErrorText(message);
+
+        if (!AnyAlertPending())
         {
-            Debug.Log(message);
+            errorWatch.Restart();
             errorAlert.Start();
         }
         alert = true;
     }
 
-    private void StopErrorTimer(ref bool alert, string message) {
-        Debug.Log("OK");
+    private void StopErrorTimer(ref bool alert, string message)
+    {
+
         alert = false;
         if (!AnyAlertPending())
+        {
+            errorWatch.Stop();
             errorAlert.Stop();
+            errorNotification.gameObject.SetActive(false);
+        }
     }
 
     private void StartWarningTimer(ref bool alert, string message)
     {
-        Debug.Log(message);
-        if(!warningAlert.Enabled)
+        warningNotification.gameObject.SetActive(true);
+        warningNotification.SetWarningText(message);
+
+        if (!warningAlert.Enabled)
             warningAlert.Start();
         alert = true;
     }
 
     private void StopWarningTimer(ref bool alert, string message)
     {
-        Debug.Log("OK");
+
         alert = false;
         if (warningAlert.Enabled)
+        {
             warningAlert.Stop();
+
+        }
     }
 
 }
