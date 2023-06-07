@@ -20,11 +20,14 @@ public class AlertManager : MonoBehaviour
     private bool outOfRoad = false;
     private bool semaphoreFail = false;
     private bool noMovement = false;
+    private bool collision = false;
     public bool LaneChanged { get => laneChanged; set => laneChanged = value; }
     public bool InverseLaneChanged { get => inverseLaneChanged; set => inverseLaneChanged = value; }
     public bool OutOfRoad { get => outOfRoad; set => outOfRoad = value; }
     public bool SemaphoreFail { get => semaphoreFail; set => semaphoreFail = value; }
     public bool NoMovement { get => noMovement; set => noMovement = value; }
+
+    public bool Collision { get => collision; set => collision = value; }
 
     private bool reload = false;
     private bool hide = false;
@@ -114,6 +117,14 @@ public class AlertManager : MonoBehaviour
         }
     }
 
+    public void AlertCollision()
+    {
+        if (!Collision)
+        {
+            StartErrorTimer(ref collision, "Se ha producido una colisión.");
+        }
+    }
+
     public void AlertNoMovement()
     {
         if (!NoMovement)
@@ -127,7 +138,7 @@ public class AlertManager : MonoBehaviour
     }
     private bool AnyAlertPending()
     {
-        return OutOfRoad || InverseLaneChanged || SemaphoreFail;
+        return OutOfRoad || InverseLaneChanged || SemaphoreFail || Collision;
     }
 
     private void StartErrorTimer(ref bool alert, string message)
