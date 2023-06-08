@@ -17,6 +17,7 @@ public class PathController : MonoBehaviour
     [SerializeField] private LineRenderer currentPath;
     [SerializeField] private Transform centerOfMass;
     [SerializeField] private Rigidbody rb;
+    [SerializeField] private Route route;
 
     private Waypoint[] mapWaypoints;
     private Waypoint prevWaypoint;
@@ -32,8 +33,24 @@ public class PathController : MonoBehaviour
     public UnityEvent OnRightPath = new();
     public UnityEvent OnSemaforeFail = new();
     public UnityEvent OnNoMovement = new();
+    public UnityEvent OnOutOfRoute = new();
 
     private bool velocityAlert = false;
+
+    public Waypoint CurrentWaypoint
+    {
+        get => currentWaypoint;
+        set
+        {
+            currentWaypoint = value;
+            if (!route.CheckWaypoint(value.position))
+            {
+               OnOutOfRoute.Invoke();
+            }
+           
+        }
+    }
+
     void Start()
     {
         mapWaypoints = currentSceneData.allWaypoints;
@@ -46,7 +63,7 @@ public class PathController : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        if (currentWaypoint == null)
+        if (CurrentWaypoint == null)
         {
             SearchNewWaypoint();
         }
@@ -64,7 +81,7 @@ public class PathController : MonoBehaviour
 
     private void ShouldStop()
     {
-        if (currentWaypoint.stop && rb.velocity.sqrMagnitude >= 0.1f)
+        if (CurrentWaypoint.stop && rb.velocity.sqrMagnitude >= 0.1f)
             OnSemaforeFail.Invoke();
 
         if (nextWaypoint.stop && Vector3.Distance(centerOfMass.position, nextWaypoint.position) < 5 && rb.velocity.magnitude < 0.1)
@@ -105,10 +122,10 @@ public class PathController : MonoBehaviour
     {
         float distance = float.PositiveInfinity;
         Waypoint tempWaypoint = nextWaypoint;
-        foreach (int waypointIndex in currentWaypoint.neighbors)
+        foreach (int waypointIndex in CurrentWaypoint.neighbors)
         {
             //float nextAngle = Vector3.Angle(transform.forward, mapWaypoints[waypointIndex].position - currentWaypoint.position);
-            float nextDistance = HandleUtility.DistancePointLine(centerOfMass.position, currentWaypoint.position, mapWaypoints[waypointIndex].position);
+            float nextDistance = HandleUtility.DistancePointLine(centerOfMass.position, CurrentWaypoint.position, mapWaypoints[waypointIndex].position);
 
             if (nextDistance < distance)
             {
@@ -132,14 +149,14 @@ public class PathController : MonoBehaviour
 
         DecideNextWaypoint();
 
-        if (currentWaypoint.neighbors.Contains(closestIndex))
+        if (CurrentWaypoint.neighbors.Contains(closestIndex))
         {
             if (Vector3.Distance(centerOfMass.position, nextWaypoint.position) > 1)
                 return;
 
-            prevWaypoint = currentWaypoint;
-            currentWaypoint = nextWaypoint;
-            nextWaypoint = mapWaypoints[currentWaypoint.neighbors[0]];
+            prevWaypoint = CurrentWaypoint;
+            CurrentWaypoint = nextWaypoint;
+            nextWaypoint = mapWaypoints[CurrentWaypoint.neighbors[0]];
 
             direction = nextWaypoint.position - prevWaypoint.position;
 
@@ -148,7 +165,7 @@ public class PathController : MonoBehaviour
         }
         float pathDistance = DistanceToPath();
 
-        if (closest == currentWaypoint)
+        if (closest == CurrentWaypoint)
         {
             OnRightPath.Invoke();
             return;
@@ -161,12 +178,12 @@ public class PathController : MonoBehaviour
         else
         {
 
-            currentWaypoint = closest;
-            prevWaypoint = mapWaypoints[currentWaypoint.prev[0]];
-            nextWaypoint = mapWaypoints[currentWaypoint.neighbors[0]];
-            
+            CurrentWaypoint = closest;
+            prevWaypoint = mapWaypoints[CurrentWaypoint.prev[0]];
+            nextWaypoint = mapWaypoints[CurrentWaypoint.neighbors[0]];
+
             direction = nextWaypoint.position - prevWaypoint.position;
-           
+
             if (pathDistance > 7)
             {
                 OnOutOfRoad.Invoke();
@@ -191,9 +208,9 @@ public class PathController : MonoBehaviour
 
     private void SearchNewWaypoint()
     {
-        currentWaypoint = GetClosestWaypoint();
-        prevWaypoint = mapWaypoints[currentWaypoint.prev[0]];
-        nextWaypoint = mapWaypoints[currentWaypoint.neighbors[0]];
+        CurrentWaypoint = GetClosestWaypoint();
+        prevWaypoint = mapWaypoints[CurrentWaypoint.prev[0]];
+        nextWaypoint = mapWaypoints[CurrentWaypoint.neighbors[0]];
 
         direction = nextWaypoint.position - prevWaypoint.position;
     }
@@ -209,13 +226,16 @@ public class PathController : MonoBehaviour
 
     private void DrawPath()
     {
+        if (!currentPath.enabled)
+            return;
+
         Vector3 prevPos = prevWaypoint?.position ?? centerOfMass.position;
-        Vector3 currentPos = currentWaypoint?.position ?? centerOfMass.position;
+        Vector3 currentPos = CurrentWaypoint?.position ?? centerOfMass.position;
         Vector3 nextPos = nextWaypoint?.position ?? centerOfMass.position;
         Vector3 postNextPos = mapWaypoints[nextWaypoint.neighbors[0]]?.position ?? centerOfMass.position;
-        
+
         currentPath.positionCount = 4;
-        currentPath.SetPositions(new Vector3[] { prevPos + Vector3.up / 2, currentPos + Vector3.up / 2, nextPos + Vector3.up / 2 , postNextPos  + Vector3.up / 2});
+        currentPath.SetPositions(new Vector3[] { prevPos + Vector3.up / 2, currentPos + Vector3.up / 2, nextPos + Vector3.up / 2, postNextPos + Vector3.up / 2 });
 
 
         foreach (Transform t in alternativeParent)
@@ -223,21 +243,31 @@ public class PathController : MonoBehaviour
             Destroy(t.gameObject);
         }
 
-        if (currentWaypoint != null && prevWaypoint != null && nextWaypoint != null)
+        if (CurrentWaypoint != null && prevWaypoint != null && nextWaypoint != null)
         {
-            for (int i = 0; i < currentWaypoint.neighbors.Count; i++)
+            for (int i = 0; i < CurrentWaypoint.neighbors.Count; i++)
             {
-                if (mapWaypoints[currentWaypoint.neighbors[i]] == nextWaypoint)
+                if (mapWaypoints[CurrentWaypoint.neighbors[i]] == nextWaypoint)
                     continue;
                 List<Vector3> path = new();
                 GameObject altPath = Instantiate(alternativePath, alternativeParent);
                 path.Add(prevPos + Vector3.up / 2);
                 path.Add(currentPos + Vector3.up / 2);
-                path.Add(mapWaypoints[currentWaypoint.neighbors[i]].position + Vector3.up / 2);
-                path.Add(mapWaypoints[mapWaypoints[currentWaypoint.neighbors[i]].neighbors[0]].position + Vector3.up / 2);
+                path.Add(mapWaypoints[CurrentWaypoint.neighbors[i]].position + Vector3.up / 2);
+                path.Add(mapWaypoints[mapWaypoints[CurrentWaypoint.neighbors[i]].neighbors[0]].position + Vector3.up / 2);
                 altPath.GetComponent<LineRenderer>().positionCount = path.Count;
                 altPath.GetComponent<LineRenderer>().SetPositions(path.ToArray());
             }
+        }
+
+    }
+
+    public void ToggleLine()
+    {
+        currentPath.enabled = !currentPath.enabled;
+        foreach (Transform t in alternativeParent)
+        {
+            Destroy(t.gameObject);
         }
     }
 }

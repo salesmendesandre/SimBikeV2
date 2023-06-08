@@ -21,6 +21,7 @@ public class AlertManager : MonoBehaviour
     private bool semaphoreFail = false;
     private bool noMovement = false;
     private bool collision = false;
+    private bool wrongPath = false;
     public bool LaneChanged { get => laneChanged; set => laneChanged = value; }
     public bool InverseLaneChanged { get => inverseLaneChanged; set => inverseLaneChanged = value; }
     public bool OutOfRoad { get => outOfRoad; set => outOfRoad = value; }
@@ -28,6 +29,7 @@ public class AlertManager : MonoBehaviour
     public bool NoMovement { get => noMovement; set => noMovement = value; }
 
     public bool Collision { get => collision; set => collision = value; }
+    public bool WrongPath { get => wrongPath; set => wrongPath = value; }
 
     private bool reload = false;
     private bool hide = false;
@@ -136,9 +138,17 @@ public class AlertManager : MonoBehaviour
             noMovement = false;
         }
     }
+
+    public void AlertWrongPath()
+    {
+        if (!WrongPath)
+        {
+            StartErrorTimer(ref wrongPath, "Te has salido del recorrido!");
+        }
+    }
     private bool AnyAlertPending()
     {
-        return OutOfRoad || InverseLaneChanged || SemaphoreFail || Collision;
+        return OutOfRoad || InverseLaneChanged || SemaphoreFail || Collision || WrongPath;
     }
 
     private void StartErrorTimer(ref bool alert, string message)
