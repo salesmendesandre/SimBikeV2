@@ -1,7 +1,6 @@
 using GleyTrafficSystem;
 using GleyUrbanAssets;
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Timers;
@@ -45,9 +44,9 @@ public class PathController : MonoBehaviour
             currentWaypoint = value;
             if (!route.CheckWaypoint(value.position))
             {
-               OnOutOfRoute.Invoke();
+                OnOutOfRoute.Invoke();
             }
-           
+
         }
     }
 
@@ -125,8 +124,8 @@ public class PathController : MonoBehaviour
         foreach (int waypointIndex in CurrentWaypoint.neighbors)
         {
             //float nextAngle = Vector3.Angle(transform.forward, mapWaypoints[waypointIndex].position - currentWaypoint.position);
-            float nextDistance = HandleUtility.DistancePointLine(centerOfMass.position, CurrentWaypoint.position, mapWaypoints[waypointIndex].position);
-
+            //float nextDistance = HandleUtility.DistancePointLine(centerOfMass.position, CurrentWaypoint.position, mapWaypoints[waypointIndex].position);
+            float nextDistance = Vector3.Magnitude(ProjectPointLine(centerOfMass.position, CurrentWaypoint.position, mapWaypoints[waypointIndex].position) - centerOfMass.position);
             if (nextDistance < distance)
             {
 
@@ -140,6 +139,22 @@ public class PathController : MonoBehaviour
             nextWaypoint = tempWaypoint;
             direction = nextWaypoint.position - prevWaypoint.position;
         }
+    }
+
+    public static Vector3 ProjectPointLine(Vector3 point, Vector3 lineStart, Vector3 lineEnd)
+    {
+        Vector3 rhs = point - lineStart;
+        Vector3 vector = lineEnd - lineStart;
+        float magnitude = vector.magnitude;
+        Vector3 vector2 = vector;
+        if (magnitude > 1E-06f)
+        {
+            vector2 /= magnitude;
+        }
+
+        float value = Vector3.Dot(vector2, rhs);
+        value = Mathf.Clamp(value, 0f, magnitude);
+        return lineStart + vector2 * value;
     }
     private void GetNextWaypoint()
     {
@@ -220,8 +235,7 @@ public class PathController : MonoBehaviour
 
         Vector3 vehiclePosition = centerOfMass.position;
         vehiclePosition.y = 0;
-
-        return HandleUtility.DistancePointLine(vehiclePosition, prevWaypoint.position, nextWaypoint.position);
+        return Vector3.Magnitude(ProjectPointLine(vehiclePosition, prevWaypoint.position, nextWaypoint.position) - vehiclePosition);
     }
 
     private void DrawPath()
