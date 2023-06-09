@@ -20,7 +20,7 @@ namespace KikiNgao.SimpleBikeControl
             else
             {
                 instance = this;
-                DontDestroyOnLoad(gameObject);
+               
             }
         }
         protected void OnDestroy()

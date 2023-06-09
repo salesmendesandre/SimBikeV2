@@ -7,10 +7,9 @@ using UnityEngine.SceneManagement;
 [ExecuteInEditMode]
 public class Route : MonoBehaviour
 {
+    public static bool guided = false;
     [SerializeField] private Transform[] waypoints;
-    [SerializeField] private Transform bike;
     private int index = 0;
-    public bool IsGuided { get; private set; }
     public int Index
     {
         get => index; set
@@ -23,12 +22,14 @@ public class Route : MonoBehaviour
 
     void Start()
     {
+#if UNITY_EDITOR
         if (!Application.isPlaying)
             return;
-        if (PlayerPrefs.GetString("MODE") == "guided")
+#endif
+
+        if (guided)
         {
-            bike.position = waypoints[0].position;
-            IsGuided = true;
+            //bike.position = waypoints[0].position;
             LineRenderer lineRenderer = GetComponent<LineRenderer>();
             lineRenderer.positionCount = waypoints.Length;
             List<Vector3> line = new();
@@ -37,14 +38,12 @@ public class Route : MonoBehaviour
                 line.Add(t.position + Vector3.up);
             }
 
+            Debug.Log("Line: " + line.Count);
             lineRenderer.SetPositions(line.ToArray());
 
 
         }
-        else
-        {
-            IsGuided = false;
-        }
+       
     }
 
     // Update is called once per frame
@@ -55,7 +54,7 @@ public class Route : MonoBehaviour
 
     public bool CheckWaypoint(Vector3 position)
     {
-        if (!IsGuided)
+        if (!guided)
             return true;
 
         if (position == waypoints[Index].position)

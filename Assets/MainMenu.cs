@@ -7,14 +7,14 @@ public class MainMenu : MonoBehaviour
 {
     public void StartFreeMode()
     {
-        PlayerPrefs.SetString("MODE", "free");
+        Route.guided = false;
         SceneManager.LoadScene("Reducido");
         
     }
 
     public void StartGuidedMode()
     {
-        PlayerPrefs.SetString("MODE", "guided");
+        Route.guided = true;
         SceneManager.LoadScene("Reducido");
     }
 
